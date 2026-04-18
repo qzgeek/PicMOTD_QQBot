@@ -1,0 +1,51 @@
+{
+    "onebot": {
+        "host": "0.0.0.0",
+        "port": 10100,
+        "access_token": "your_token"
+    },
+    "allowed_groups": [1145141919810],
+    "command_trigger": "服务器还活着吗",
+    "rate_limit": {
+        "max_per_window": 3,
+        "window_seconds": 60
+    },
+    "timeout": 3.0,
+    "minecraft_server": {
+        "host": "mc.example.com",
+        "port": 25565,
+        "display_name": "示例 服务器",
+        "description": "> 这是一段平平无奇的介绍~~"
+    },
+    "system_stats": {
+        "cpu_url": "http://api.example.com/cpu",
+        "mem_url": "http://api.example.com/mem"
+    },
+    "card": {
+        "canvas_size": [1500, 600],
+        "font_path": "./LXGWWenKaiMono-Medium.ttf",
+        "background_path": "./background.png",
+        "theme": {
+            "main_bg_mask": "#0F2540CC",
+            "bottom_bar_bg": "#051225E0",
+            "text_main": "#D0E0FF",
+            "text_sub": "#B0C4DE",
+            "text_bottom": "#607090",
+            "success": "#55FF55",
+            "warning": "#FFFF55",
+            "danger": "#FF5555"
+        },
+        "threshold": {
+            "cpu_warning": 50,
+            "cpu_danger": 80,
+            "mem_warning": 50,
+            "mem_danger": 80
+        }
+    },
+    "message_delay": {
+        "enabled": true,
+        "min_seconds": 0.5,
+        "max_seconds": 5.0
+    },
+    "send_hint_messages": false
+}
