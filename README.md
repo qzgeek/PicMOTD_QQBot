@@ -159,55 +159,60 @@ python main.py
 
 此时，在您配置的 QQ 群内发送 `服务器还活着吗`，机器人便会开始查询并返回服务器状态卡片。
 
-🛠️ 自定义与扩展
+## 🛠️ 自定义与扩展
 
-更改字体
+### 更改字体
 
 1. 下载您喜欢的中文 TrueType 字体（.ttf 文件）。
 2. 将其放置在项目目录下，并修改 config.json 中的 card.font_path 路径。
 
-更换背景图片
+### 更换背景图片
 
 1. 准备一张尺寸与 canvas_size 比例相近的图片（推荐 16:9）。
 2. 修改 config.json 中的 card.background_path 路径。
 
-修改卡片主题颜色
+### 修改卡片主题颜色
 
 在 config.json 的 card.theme 对象中，您可以自定义所有颜色。颜色值支持常见的 CSS 颜色格式（如 #RRGGBB 或 #RRGGBBAA）。
 
-添加更多命令
+### 添加更多命令
 
 您可以在 main.py 的 handle_group_command 函数中添加更多触发词和相应的处理逻辑。
 
-❓ 常见问题
+## ❓ 常见问题
 
-Q: 机器人连接成功后，发送命令没有反应？
+### Q: 机器人连接成功后，发送命令没有反应？
 
 · 检查 config.json 中的 allowed_groups 是否包含当前群号。
 · 检查发送的消息是否与 command_trigger 完全匹配。
 · 确认 OneBot 客户端已正常登录 QQ 并接收消息。
 
-Q: 卡片中的中文显示为方块或乱码？
+### Q: 卡片中的中文显示为方块或乱码？
 
 · 这是由于缺少中文字体。请务必在 config.json 的 card.font_path 中指定一个支持中文的 .ttf 字体文件路径。项目推荐使用 LXGW WenKai 或 Noto Sans CJK。
 
-Q: CPU/内存信息显示为 -1.0% 或异常？
+### Q: CPU/内存信息显示为 -1.0% 或异常？
 
 · 这表示机器人无法从 cpu_url / mem_url 获取到正确的数据。
 · 请检查 C++ 监控服务是否正在运行，端口是否被占用，以及防火墙设置。
 · 您可以在浏览器中直接访问 http://127.0.0.1:35008/cpu 来测试接口是否正常，亦或者在命令行中执行：`curl http://127.0.0.1:35008/cpu`
 
-Q: 如何对接其他 OneBot 实现（如 LLOneBot）？
+### Q: 如何对接其他 OneBot 实现（如 LLOneBot）？
 
-· 在 LLOneBot 的设置中，开启“正向 WebSocket 服务”，将端口设置为 config.json 中 onebot.port 的值（例如 10100），并确保 access_token 匹配即可。
+· 在 LLOneBot 的设置中，开启“反向 WebSocket 服务”，将端口设置为 config.json 中 onebot.port 的值（例如 10100），并确保 access_token 匹配以及符合快速开始中的配置要求即可。
 
-📄 许可证
+### Q：为什么很多时候服务器图标不显示
+
+· 服务器的图标通过Motd获取，很多时候网络波动或其他一些原因都可能导致服务器图标获取失败，再次尝试即可。
+
+## 📄 许可证
 
 本项目仅供学习交流使用，请勿用于非法用途。代码中引用的 Minecraft 协议部分遵循其原始许可。
 
-🙏 致谢
+## 🙏 致谢
 
 · OneBot - 统一的聊天机器人应用接口标准
 · Pillow - Python 图像处理库
 · NapCat - 优秀的 OneBot 实现
 · 霞鹜文楷 - 优秀的开源中文字体
+![霞鹜文楷](https://raw.githubusercontent.com/lxgw/LxgwWenKai/main/documentation/wenkai-1.png)
