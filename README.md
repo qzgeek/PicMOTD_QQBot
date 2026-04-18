@@ -183,27 +183,27 @@ python main.py
 
 ### Q: 机器人连接成功后，发送命令没有反应？
 
-· 检查 config.json 中的 allowed_groups 是否包含当前群号。
-· 检查发送的消息是否与 command_trigger 完全匹配。
-· 确认 OneBot 客户端已正常登录 QQ 并接收消息。
+- 检查 config.json 中的 allowed_groups 是否包含当前群号。
+- 检查发送的消息是否与 command_trigger 完全匹配。
+- 确认 OneBot 客户端已正常登录 QQ 并接收消息。
 
 ### Q: 卡片中的中文显示为方块或乱码？
 
-· 这是由于缺少中文字体。请务必在 config.json 的 card.font_path 中指定一个支持中文的 .ttf 字体文件路径。项目推荐使用 LXGW WenKai 或 Noto Sans CJK。
+- 这是由于缺少中文字体。请务必在 config.json 的 card.font_path 中指定一个支持中文的 .ttf 字体文件路径。项目推荐使用 LXGW WenKai（霞鹜文楷） 或 Noto Sans CJK。
 
 ### Q: CPU/内存信息显示为 -1.0% 或异常？
 
-· 这表示机器人无法从 cpu_url / mem_url 获取到正确的数据。
-· 请检查 C++ 监控服务是否正在运行，端口是否被占用，以及防火墙设置。
-· 您可以在浏览器中直接访问 http://127.0.0.1:35008/cpu 来测试接口是否正常，亦或者在命令行中执行：`curl http://127.0.0.1:35008/cpu`
+- 这表示机器人无法从 cpu_url / mem_url 获取到正确的数据。
+- 请检查 C++ 监控服务是否正在运行，端口是否被占用，以及防火墙设置。
+- 您可以在浏览器中直接访问 http://127.0.0.1:35008/cpu 来测试接口是否正常，亦或者在命令行中执行：`curl http://127.0.0.1:35008/cpu`
 
 ### Q: 如何对接其他 OneBot 实现（如 LLOneBot）？
 
-· 在 LLOneBot 的设置中，开启“反向 WebSocket 服务”，将端口设置为 config.json 中 onebot.port 的值（例如 10100），并确保 access_token 匹配以及符合快速开始中的配置要求即可。
+- 在 LLOneBot 的设置中，开启“反向 WebSocket 服务”，将端口设置为 config.json 中 onebot.port 的值（例如 10100），并确保 access_token 匹配以及符合快速开始中的配置要求即可。
 
 ### Q：为什么很多时候服务器图标不显示
 
-· 服务器的图标通过Motd获取，很多时候网络波动或其他一些原因都可能导致服务器图标获取失败，再次尝试即可。
+- 服务器的图标通过Motd获取，很多时候网络波动或其他一些原因都可能导致服务器图标获取失败，再次尝试即可。
 
 ## 📄 许可证
 
