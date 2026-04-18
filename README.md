@@ -17,7 +17,7 @@
 
 ## 📸 预览
 
-机器人接收到命令后，会返回类似下方的卡片图片（示例）：
+机器人接收到命令后，会发送类似下方的卡片图片到群聊中（示例）：
 
 ![展示](https://raw.githubusercontent.com/qzgeek/photos/refs/heads/main/Image_1776517226359_57.png)
 
