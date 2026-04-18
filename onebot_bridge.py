@@ -100,6 +100,14 @@ class OneBot服务端:
         self._服务实例 = await websockets.serve(self._处理客户端连接, self.主机, self.端口)
         print(f"[OneBot] 服务端启动于 ws://{self.主机}:{self.端口}")
         await self._服务实例.wait_closed()
+    
+    async def 发送原始数据(self, 客户端标识: str, 数据: Union[str, dict]):
+        if 客户端标识 not in self._连接池:
+            raise ValueError(f"客户端 {客户端标识} 未连接")
+        连接 = self._连接池[客户端标识]
+        if isinstance(数据, dict):
+            数据 = json.dumps(数据)
+        await 连接.websocket.send(数据)
 
     async def 调用API(self, 客户端标识: str, 动作: str, 参数: dict = None, 超时: int = 10) -> dict:
         """主动调用 API，返回响应数据"""
@@ -248,7 +256,7 @@ class OneBot接口:
     def __init__(self, 服务端: "OneBot服务端", 客户端标识: str):
         self._服务端 = 服务端
         self._客户端标识 = 客户端标识
-
+    
     async def _调用(self, 动作: str, 参数: dict, 超时: int = 10) -> dict:
         """底层 API 调用"""
         return await self._服务端.调用API(self._客户端标识, 动作, 参数, 超时)

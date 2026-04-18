@@ -1,6 +1,6 @@
 """
 Minecraft Java 版服务器 MOTD 查询模块（支持图标返回为 PIL Image 对象）
-支持 SRV 解析、多协议版本、调试输出
+支持 SRV 解析、多协议版本、调试输出、在线玩家列表
 """
 
 import socket
@@ -10,7 +10,7 @@ import time
 import base64
 import io
 from typing import Optional, Tuple, Dict, Any, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # 尝试导入 PIL，如果失败则标记为不可用
 try:
@@ -36,6 +36,7 @@ class ServerInfo:
     icon_raw: str = ""              # 原始 favicon Base64 字符串（调试用）
     max_players: int = 0
     online_players: int = 0
+    players_sample: List[Dict[str, str]] = field(default_factory=list)  # 新增：在线玩家样本列表
     latency: float = 0.0
     error: str = ""
     debug_info: str = ""
@@ -43,7 +44,7 @@ class ServerInfo:
     def __str__(self) -> str:
         if not self.online:
             return f"Server {self.host}:{self.port} is offline. {self.error}"
-        return (
+        info = (
             f"Server: {self.host}:{self.port}\n"
             f"Resolved: {self.resolved_host}:{self.resolved_port}\n"
             f"Version: {self.version} (protocol {self.protocol})\n"
@@ -51,6 +52,12 @@ class ServerInfo:
             f"MOTD: {self.motd}\n"
             f"Latency: {self.latency:.1f}ms"
         )
+        if self.players_sample:
+            sample_names = [p['name'] for p in self.players_sample[:5]]
+            info += f"\nPlayers online: {', '.join(sample_names)}"
+            if len(self.players_sample) > 5:
+                info += f" and {len(self.players_sample) - 5} more..."
+        return info
 
 
 class MCQueryError(Exception):
@@ -283,7 +290,7 @@ class MinecraftPinger:
         """
         if not favicon_data or not isinstance(favicon_data, str):
             return None, ""
-        
+
         raw = favicon_data
         # 检查是否为 data URI 格式
         if favicon_data.startswith("data:image/png;base64,"):
@@ -371,6 +378,7 @@ class MinecraftPinger:
             players = data.get("players", {})
             max_players = players.get("max", 0)
             online_players = players.get("online", 0)
+            players_sample = players.get("sample", [])  # 新增：获取玩家样本列表
 
             # 解析图标
             favicon = data.get("favicon")
@@ -393,6 +401,7 @@ class MinecraftPinger:
                 icon_raw=icon_raw,
                 max_players=max_players,
                 online_players=online_players,
+                players_sample=players_sample,  # 新增
                 latency=latency,
                 debug_info="\n".join(debug_msgs) if self.debug else ""
             )
@@ -447,7 +456,7 @@ def get_motd(host: str, port: Optional[int] = None,
              read_timeout: float = 3.0,
              debug: bool = False) -> ServerInfo:
     """
-    获取 Minecraft 服务器 MOTD 信息（含图标）
+    便捷函数：获取 Minecraft 服务器 MOTD 信息（含图标、在线玩家列表）
     """
     pinger = MinecraftPinger(host, port, connect_timeout, read_timeout, debug=debug)
     return pinger.ping()
@@ -474,5 +483,10 @@ if __name__ == "__main__":
             # info.icon.save("server_icon.png")
         else:
             print("\nNo server icon or PIL not installed.")
+        # 展示玩家列表详情（如果有）
+        if info.players_sample:
+            print("\nOnline players sample (may be partial):")
+            for player in info.players_sample:
+                print(f"  - {player['name']} ({player['id']})")
     else:
         print(f"Error: {info.error}")

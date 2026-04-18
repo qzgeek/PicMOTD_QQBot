@@ -5,18 +5,17 @@ import random
 import aiohttp
 import base64
 import io
-from typing import Dict, Any, Optional
+import math
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from collections import defaultdict
 
-# 导入项目中的模块（确保文件名正确）
 from motd import MinecraftPinger, ServerInfo
 from onebot_bridge import OneBot服务端, OneBot接口, 消息段
 from status_card import MCServerStatusCardRenderer
 
 # ------------------- 配置加载 -------------------
 def load_config(config_path: str = "config.json") -> Dict[str, Any]:
-    """加载配置文件"""
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -24,7 +23,6 @@ config = load_config()
 
 # ------------------- 频率限制器 -------------------
 class RateLimiter:
-    """基于群聊的请求频率限制"""
     def __init__(self, max_requests: int, window_seconds: int):
         self.max_requests = max_requests
         self.window = window_seconds
@@ -32,7 +30,6 @@ class RateLimiter:
 
     def is_allowed(self, group_id: int) -> bool:
         now = time.time()
-        # 清理过期记录
         self.records[group_id] = [
             ts for ts in self.records[group_id]
             if now - ts < self.window
@@ -49,7 +46,6 @@ rate_limiter = RateLimiter(
 
 # ------------------- 随机延迟 -------------------
 async def random_delay():
-    """根据配置在发送消息前随机延迟一段时间，防止行为模式被识别"""
     delay_cfg = config.get("message_delay", {})
     if delay_cfg.get("enabled", False):
         min_sec = delay_cfg.get("min_seconds", 0.5)
@@ -57,23 +53,14 @@ async def random_delay():
         delay = random.uniform(min_sec, max_sec)
         await asyncio.sleep(delay)
 
-# ------------------- 带延迟的消息发送封装 -------------------
 async def send_group_message(api: OneBot接口, group_id: int, content, is_hint: bool = False):
-    """
-    发送群消息，自动处理随机延迟和提示文本开关。
-    - content: 消息内容，字符串或消息段列表
-    - is_hint: 是否为提示类消息（如"请求过于频繁"），受 send_hint_messages 开关控制
-    """
-    # 如果是提示消息且配置关闭提示，则直接返回不发送
     if is_hint and not config.get("send_hint_messages", True):
         return
-
     await random_delay()
     await api.发送群消息(group_id, content)
 
 # ------------------- 系统资源获取 -------------------
 async def fetch_cpu_usage(url: str) -> Optional[float]:
-    """获取 CPU 占用百分比（直接返回数值）"""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
@@ -85,7 +72,6 @@ async def fetch_cpu_usage(url: str) -> Optional[float]:
     return None
 
 async def fetch_mem_usage(url: str) -> Optional[float]:
-    """获取内存占用百分比"""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
@@ -96,6 +82,88 @@ async def fetch_mem_usage(url: str) -> Optional[float]:
         pass
     return None
 
+# ------------------- 玩家列表处理 -------------------
+def filter_and_format_players(
+    players_sample: List[Dict[str, str]],
+    player_list_config: Dict[str, Any]
+) -> List[str]:
+    """
+    过滤假人、随机选取、格式化成多行文本
+    返回每行字符串列表
+    """
+    if not player_list_config.get("enabled", False) or not players_sample:
+        return []
+
+    # 过滤排除项
+    exclude_names = set(player_list_config.get("exclude_names", []))
+    exclude_uuids = set(player_list_config.get("exclude_uuids", []))
+
+    filtered = []
+    for p in players_sample:
+        name = p.get("name", "")
+        uuid = p.get("id", "")
+        # 按名称排除（支持子串匹配）
+        if any(ex in name for ex in exclude_names):
+            continue
+        # 按UUID排除（精确匹配）
+        if uuid in exclude_uuids:
+            continue
+        filtered.append(name)
+
+    if not filtered:
+        return []
+
+    # 随机打乱
+    random.shuffle(filtered)
+
+    # 限制最大显示数量
+    max_players = player_list_config.get("max_players", 24)
+    if len(filtered) > max_players:
+        filtered = filtered[:max_players]
+
+    # 按最大行数折行
+    max_lines = player_list_config.get("max_lines", 3)
+    # 估算每行最大字符数（假设等宽字体，中文约2字符宽，这里粗略按1.2倍英文字符算）
+    # 卡片宽度约1500，减去左侧留白，文本起始x=80+190+45=315，可用宽度约1100px
+    # 36px字体，英文字符平均宽约18px，中文字符约36px，粗略估计每行最多约50个中文字符或100个英文字符
+    # 为简化，我们用一个固定最大字符数，或者动态计算（这里用固定60个字符作为折行依据）
+    max_chars_per_line = 60
+
+    lines = []
+    current_line = ""
+    for name in filtered:
+        # 添加玩家名，后面加逗号和空格
+        segment = name + ", "
+        # 如果当前行加上新名字会超长，则换行
+        if len(current_line) + len(segment) > max_chars_per_line:
+            if current_line:
+                lines.append(current_line.rstrip(", "))
+                current_line = ""
+            # 若名字本身超长，直接作为独立行（极少见）
+            if len(segment) > max_chars_per_line:
+                lines.append(segment.rstrip(", "))
+                continue
+        current_line += segment
+
+    if current_line:
+        lines.append(current_line.rstrip(", "))
+
+    # 限制最大行数
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        # 如果最后一行被截断，末尾加"..."
+        if lines:
+            lines[-1] = lines[-1] + "..."
+
+    # 在每行前加 "在线玩家：" 作为第一行的前缀，后续行对齐缩进
+    if lines:
+        lines[0] = "在线玩家：" + lines[0]
+        indent = "          "  # 10个空格，与"在线玩家："视觉对齐（可根据字体调整）
+        for i in range(1, len(lines)):
+            lines[i] = indent + lines[i]
+
+    return lines
+
 # ------------------- 渲染卡片 -------------------
 def build_status_card(
     server_info: ServerInfo,
@@ -103,10 +171,12 @@ def build_status_card(
     cpu_usage: Optional[float],
     mem_usage: Optional[float],
     status_ok: bool,
-    error_msg: str = ""
+    error_msg: str = "",
+    player_lines: List[str] = None
 ) -> io.BytesIO:
-    """根据服务器信息渲染状态卡片，返回图片的 BytesIO 对象"""
-    # 初始化渲染器
+    if player_lines is None:
+        player_lines = []
+
     renderer = MCServerStatusCardRenderer(
         canvas_size=tuple(config.get("card", {}).get("canvas_size", (1920, 600))),
         font_path=config.get("card", {}).get("font_path", "./LXGWWenKaiMono-Medium.ttf"),
@@ -114,7 +184,6 @@ def build_status_card(
         threshold=config.get("card", {}).get("threshold")
     )
 
-    # 处理服务器图标（若无则生成一个默认纯色图标）
     from PIL import Image, ImageDraw
     if server_info.icon and server_info.online:
         icon_img = server_info.icon
@@ -123,39 +192,29 @@ def build_status_card(
         draw = ImageDraw.Draw(icon_img)
         draw.ellipse((10, 10, 180, 180), fill="#5D6D7E")
 
-    # 处理背景图片
     bg_path = config.get("card", {}).get("background_path", "")
     if bg_path and __import__("os").path.exists(bg_path):
         bg_img = Image.open(bg_path)
     else:
         bg_img = Image.new("RGB", (renderer.canvas_w, renderer.canvas_h), "#1A252F")
 
-    # 处理 MOTD 文本
     motd_text = server_info.motd if server_info.motd else "暂无 MOTD"
 
-    # 底部声明信息
     bottom_lines = [
         f"查询时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" if status_ok else f"异常：{error_msg}",
         "Write by 黔中极客"
     ]
 
-    # 在线人数
     online_players = server_info.online_players if server_info.online else 0
     max_players = server_info.max_players if server_info.online else 0
-
-    # CPU/内存值处理（异常时显示 -1.0，卡片会以红色显示）
     cpu_val = cpu_usage if cpu_usage is not None else -1.0
     mem_val = mem_usage if mem_usage is not None else -1.0
 
-    # 确定显示的服务器地址：若经过 SRV 解析则仅显示域名，否则显示 host:port
     if server_info.resolved_host != server_info.host or server_info.resolved_port != server_info.port:
-        # 经过了 SRV 解析，显示原始域名（不带端口）
         display_address = server_info.host
     else:
-        # 未经过 SRV 解析，显示 host:port
         display_address = f"{server_info.host}:{server_info.port}"
 
-    # 调用渲染器生成图片
     card_img = renderer.render(
         server_name=server_config.get("display_name", "Minecraft服务器") if status_ok else "连接失败",
         server_icon=icon_img,
@@ -169,40 +228,35 @@ def build_status_card(
         bottom_declaration=bottom_lines,
         cpu_usage=cpu_val,
         mem_usage=mem_val,
-        background=bg_img
+        background=bg_img,
+        player_lines=player_lines
     )
 
-    # 转为 BytesIO 供发送
     img_bytes = io.BytesIO()
     card_img.save(img_bytes, format="PNG")
     img_bytes.seek(0)
     return img_bytes
 
+# ------------------- 命令处理 -------------------
 async def handle_group_command(api: OneBot接口, group_id: int, user_id: int, message: str):
-    """处理群聊命令"""
     cmd_trigger = config.get("command_trigger", "/状态")
     if message.strip() != cmd_trigger:
         return
 
-    # 检查是否允许的群
     allowed_groups = config.get("allowed_groups", [])
     if allowed_groups and group_id not in allowed_groups:
         return
 
-    # 频率限制
     if not rate_limiter.is_allowed(group_id):
         await send_group_message(api, group_id, "请求过于频繁，请稍后再试～", is_hint=True)
         return
 
-    # 获取服务器配置
     server_cfg = config["minecraft_server"]
     host = server_cfg["host"]
     port = server_cfg.get("port", 25565)
 
-    # 可选：发送“正在查询”提示（受提示开关控制）
     await send_group_message(api, group_id, "正在查询服务器状态，请稍候...", is_hint=True)
 
-    # 异步获取 MOTD
     timeout_val = config.get("timeout", 3.0)
     pinger = MinecraftPinger(
         host=host,
@@ -214,12 +268,10 @@ async def handle_group_command(api: OneBot接口, group_id: int, user_id: int, m
     loop = asyncio.get_event_loop()
     server_info = await loop.run_in_executor(None, pinger.ping)
 
-    # 并发获取系统资源
     cpu_task = fetch_cpu_usage(config["system_stats"]["cpu_url"])
     mem_task = fetch_mem_usage(config["system_stats"]["mem_url"])
     cpu_usage, mem_usage = await asyncio.gather(cpu_task, mem_task)
 
-    # 判断整体状态
     status_ok = server_info.online and cpu_usage is not None and mem_usage is not None
     error_msg = ""
     if not server_info.online:
@@ -229,7 +281,12 @@ async def handle_group_command(api: OneBot接口, group_id: int, user_id: int, m
     elif mem_usage is None:
         error_msg = "内存占用获取失败"
 
-    # 渲染卡片
+    # 处理玩家列表
+    player_list_config = config.get("player_list", {})
+    player_lines = []
+    if server_info.online and player_list_config.get("enabled", False):
+        player_lines = filter_and_format_players(server_info.players_sample, player_list_config)
+
     try:
         img_bytes = build_status_card(
             server_info=server_info,
@@ -237,21 +294,19 @@ async def handle_group_command(api: OneBot接口, group_id: int, user_id: int, m
             cpu_usage=cpu_usage,
             mem_usage=mem_usage,
             status_ok=status_ok,
-            error_msg=error_msg
+            error_msg=error_msg,
+            player_lines=player_lines
         )
     except Exception as e:
         await send_group_message(api, group_id, f"渲染卡片时出错：{e}", is_hint=True)
         return
 
-    # 发送图片（base64 格式）
     base64_img = base64.b64encode(img_bytes.read()).decode("utf-8")
     img_message = 消息段.图片(f"base64://{base64_img}")
-    # 图片消息通常不算提示，直接发送（不受 hint 开关影响）
     await send_group_message(api, group_id, [img_message], is_hint=False)
 
 # ------------------- 主函数 -------------------
 async def main():
-    # 创建 OneBot 服务端实例
     ws_config = config["onebot"]
     server = OneBot服务端(
         主机=ws_config["host"],
@@ -259,10 +314,8 @@ async def main():
         访问令牌=ws_config.get("access_token")
     )
 
-    # 注册消息事件处理器
     @server.注册事件处理器
     async def on_message(event: dict):
-        # 只处理群聊消息事件
         if event.get("post_type") != "message":
             return
         if event.get("message_type") != "group":
@@ -272,7 +325,6 @@ async def main():
         user_id = event["user_id"]
         raw_message = event["raw_message"]
 
-        # 从连接池中获取第一个客户端标识（适用于单客户端连接场景）
         if not server._连接池:
             return
         client_id = next(iter(server._连接池.keys()))
