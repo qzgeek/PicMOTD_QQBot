@@ -211,8 +211,8 @@ python main.py
 
 ## 🙏 致谢
 
-· OneBot - 统一的聊天机器人应用接口标准
-· Pillow - Python 图像处理库
-· NapCat - 优秀的 OneBot 实现
-· 霞鹜文楷 - 优秀的开源中文字体
+- OneBot - 统一的聊天机器人应用接口标准
+- Pillow - Python 图像处理库
+- NapCat - 优秀的 OneBot 实现
+- 霞鹜文楷 - 优秀的开源中文字体
 ![霞鹜文楷](https://raw.githubusercontent.com/lxgw/LxgwWenKai/main/documentation/wenkai-1.png)
