@@ -1,0 +1,1 @@
+g++ -std=c++17 -pthread -o sys_monitor main.cpp
