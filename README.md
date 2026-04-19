@@ -20,9 +20,7 @@
 
 机器人接收到命令后，会发送类似下方的卡片图片到群聊中（示例）：
 
-![展示v1.0.0](https://raw.githubusercontent.com/qzgeek/photos/refs/heads/main/Image_1776517226359_57.png)
-
-*（注：上图可能不包含玩家列表，最新版本的玩家列表显示效果请以实际运行为准）*
+![展示v1.0.1](https://github.com/qzgeek/photos/raw/refs/heads/main/Image_1776578858843_16.png)
 
 ## 📁 项目结构
 
