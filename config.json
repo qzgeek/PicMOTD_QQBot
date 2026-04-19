@@ -47,5 +47,12 @@
         "min_seconds": 0.5,
         "max_seconds": 5.0
     },
-    "send_hint_messages": false
+    "send_hint_messages": false,
+    "player_list": {
+        "enabled": true,
+        "max_lines": 2,
+        "max_players": 10,
+        "exclude_names": ["bot_", "Anonymous Player"],
+        "exclude_uuids": ["00000000-0000-0000-0000-000000000000"]
+    }
 }
